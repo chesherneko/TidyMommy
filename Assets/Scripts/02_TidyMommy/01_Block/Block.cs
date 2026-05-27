@@ -71,11 +71,8 @@ public class Block : MonoBehaviour
         this.pool = pool;
     }
 
-    public bool TryActive(BlockType type, BlockBucket bucket)
+    public void Active(BlockType type, BlockBucket bucket)
     {
-        if (bucket.HasAvailableSpace == false)
-            return false;
-
         Type = type;
         CurrentBucket = bucket;
 
@@ -87,6 +84,14 @@ public class Block : MonoBehaviour
 #if UNITY_EDITOR
         transform.SetParent(bucket.transform);
 #endif
+    }
+
+    public bool TryActive(BlockType type, BlockBucket bucket)
+    {
+        if (bucket.HasAvailableSpace == false)
+            return false;
+
+        Active(type, bucket);
         return true;
     }
 

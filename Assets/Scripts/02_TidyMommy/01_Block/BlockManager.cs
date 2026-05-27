@@ -9,11 +9,15 @@ public interface IBlockPool
     void EnqueueBlock(Block block);
 }
 
-public class BlockManager : MonoBehaviour, IBlockPool
+public class BlockManager : MonoSingleton<BlockManager>, IBlockPool
 {
+    private const int BOMB_BLOCK_REMOVE_COUNT = 3;
+
     [Header("Components")]
-    [SerializeField] TidyMommy tidyMommy;
     [SerializeField] private BlockBucket[] buckets;
+
+    [Header("Settings")]
+    [SerializeField] private float matchSpawnChance = 0.9f;
 
     [Header("Block")]
     private readonly Queue<Block> blockQueue = new();
@@ -22,6 +26,8 @@ public class BlockManager : MonoBehaviour, IBlockPool
     private Block selectedBlock;
 
     private readonly BlockType[] blockTypes = (BlockType[])Enum.GetValues(typeof(BlockType));
+
+    private TidyMommy TidyMommy => TidyMommy.Instance;
 
     #region UNITY METHOD
     private void Awake()
@@ -60,15 +66,16 @@ public class BlockManager : MonoBehaviour, IBlockPool
         return GetBlockTypeExcluding(candidate);
     }
 
-    private Dictionary<BlockType, int> GetBlockCounts()
+    private Dictionary<BlockType, int> GetBlockCounts(bool useDefaultCount = true)
     {
         Dictionary<BlockType, int> counts = DictionaryPool<BlockType, int>.Get();
 
-        Level level = tidyMommy.CurrentLevel;
-        int maxSpawnTypeIdx = (int)GetMaxBlockType(level);
+        Level level = TidyMommy.CurrentLevel;
+        Mode mode = TidyMommy.CurrentMode;
+        int maxSpawnTypeIdx = (int)GetMaxBlockType(level, mode);
 
         for (int i = 0; i <= maxSpawnTypeIdx; i++)
-            counts[blockTypes[i]] = 1; //기본적으로 생성 가능한 모든 블럭은 1의 가중치를 가짐
+            counts[blockTypes[i]] = useDefaultCount ? 1 : 0;
 
         for (int i = 0; i < buckets.Length; i++)
         {
@@ -95,7 +102,7 @@ public class BlockManager : MonoBehaviour, IBlockPool
         totalWeight = 0f;
         Dictionary<BlockType, float> weights = DictionaryPool<BlockType, float>.Get();
 
-        Level level = tidyMommy.CurrentLevel;
+        Level level = TidyMommy.CurrentLevel;
         float exponent = GetLevelExponent(level);
 
         foreach (var count in counts)
@@ -134,7 +141,9 @@ public class BlockManager : MonoBehaviour, IBlockPool
     {
         List<BlockType> types = ListPool<BlockType>.Get();
 
-        int maxTypeIdx = (int)GetMaxBlockType(tidyMommy.CurrentLevel);
+        Level level = TidyMommy.CurrentLevel;
+        Mode mode = TidyMommy.CurrentMode;
+        int maxTypeIdx = (int)GetMaxBlockType(level, mode);
 
         for (int i = 0; i <= maxTypeIdx; i++)
             types.Add(blockTypes[i]); //사용 가능한 모든 타입 추가
@@ -149,8 +158,10 @@ public class BlockManager : MonoBehaviour, IBlockPool
         return type;
     }
 
-    private BlockType GetMaxBlockType(Level level)
+    private BlockType GetMaxBlockType(Level level, Mode mode)
     {
+        if (mode == Mode.SuperFever) return BlockType.Blue;
+
         return level switch
         {
             Level.One => BlockType.Blue,
@@ -159,6 +170,50 @@ public class BlockManager : MonoBehaviour, IBlockPool
             Level.Four => BlockType.Purple,
             _ => BlockType.White,
         };
+    }
+
+    private void TrySpawnBlocksWhenMatched()
+    {
+        //기본적으로 스폰은 확률로, 그러나 매칭되는 블록이 없다면 강제 스폰
+        float chance = Random.Range(0f, 1f);
+
+        if (chance <= matchSpawnChance)
+            SpawnRandomBlocksToAllLines();
+
+        SpawnRandomBlocksIfNoMatches();
+    }
+
+    private void SpawnRandomBlocksIfNoMatches()
+    {
+        Dictionary<BlockType, int> counts = GetBlockCounts(false);
+
+        bool isValid = false;
+
+        foreach (var count in counts.Values)
+        {
+            if (count >= BlockBucket.MATCH_BLOCK_COUNT)
+            {
+                isValid = true;
+                break;
+            }
+        }
+
+        DictionaryPool<BlockType, int>.Release(counts);
+
+        if (isValid) return;
+
+        SpawnRandomBlocksToAllLines();
+        SpawnRandomBlocksIfNoMatches();
+    }
+
+    private void UseBombBlock(Block block)
+    {
+        if (block.Type != BlockType.Bomb) return;
+
+        block.Inactive();
+        RemoveBlocksFromAllLines(BOMB_BLOCK_REMOVE_COUNT);
+
+        SpawnRandomBlocksToAllLines(Random.Range(1, 3)); //1~2줄 생성
     }
 
     private float GetLevelExponent(Level level)
@@ -213,14 +268,21 @@ public class BlockManager : MonoBehaviour, IBlockPool
 
             if (selectedBucket.HasAvailableSpace == false) return;
 
+            if (selectedBlock.Type == BlockType.Bomb)
+            {
+                UseBombBlock(selectedBlock);
+                selectedBlock = null;
+                return;
+            }
+
             selectedBlock.TransferBucketTo(selectedBucket);
             DeselectSelectedBlock();
 
             if (selectedBucket.CheckBlockMatch())
             {
-                SpawnRandomBlocksToAllLines();
+                TrySpawnBlocksWhenMatched();
 
-                tidyMommy.AdvanceLevelUpCount();
+                TidyMommy.OnBlockMatched();
                 GameManager.Instance.IncreaseScore();
             }
         }
@@ -260,6 +322,69 @@ public class BlockManager : MonoBehaviour, IBlockPool
                 }
             }
         }
+
+        SpawnRandomBlocksIfNoMatches();
+    }
+
+    public void SpawnBlocksToAllLines(BlockType type, int counts = 1)
+    {
+        for (int count = 0; count < counts; count++)
+        {
+            for (int i = 0; i < buckets.Length; i++)
+            {
+                BlockBucket bucket = buckets[i];
+                Block block = blockQueue.Dequeue();
+
+                block.Active(type, bucket);
+            }
+        }
+    }
+
+    public void RemoveBlocksFromAllLines(int counts)
+    {
+        if (counts <= 0) return;
+
+        //전달 받은 counts에 따라 '가능한 만큼' 삭제
+        for (int i = 0; i < buckets.Length; i++)
+        {
+            BlockBucket bucket = buckets[i];
+            IReadOnlyList<Block> blocks = bucket.ActiveBlocks;
+
+            for (int j = 0; j < counts; j++)
+            {
+                if (blocks.Count == 0) break;
+
+                Block block = blocks[0];
+                block.Inactive();
+            }
+        }
+    }
+
+    public bool TrySpawnBombBlock()
+    {
+        List<BlockBucket> availableBuckets = ListPool<BlockBucket>.Get();
+
+        for (int i = 0; i < buckets.Length; i++)
+        {
+            BlockBucket bucket = buckets[i];
+
+            if (bucket.HasAvailableSpace)
+                availableBuckets.Add(bucket);
+        }
+
+        bool canAnySpawn = availableBuckets.Count > 0;
+
+        if (canAnySpawn)
+        {
+            int randIdx = Random.Range(0, availableBuckets.Count);
+            BlockBucket bucket = availableBuckets[randIdx];
+
+            Block block = blockQueue.Dequeue();
+            block.Active(BlockType.Bomb, bucket);
+        }
+
+        ListPool<BlockBucket>.Release(availableBuckets);
+        return canAnySpawn;
     }
     #endregion
 }

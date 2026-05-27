@@ -3,9 +3,10 @@ using UnityEngine;
 
 public class BlockBucket : MonoBehaviour
 {
-    private const int MAX_BLOCKS_PER_BUCKET = 12;
+    public const int MATCH_BLOCK_COUNT = 3;
+    public const int MAX_BLOCKS_PER_BUCKET = 12;
+
     private const int LAST_BLOCK_COUNT = 2;
-    private const int MATCH_BLOCK_COUNT = 3;
 
     [Header("Components")]
     [SerializeField] BlockManager blockManager;

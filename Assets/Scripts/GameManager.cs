@@ -2,26 +2,48 @@ using UnityEngine;
 
 public class GameManager : MonoSingleton<GameManager>
 {
-    private const int SCORE_UNIT = 200;
-    private const int SCORE_BONUS_INTERVAL = 10;
-    private const float SCORE_BONUS_RATE = 0.5f;
+    [Header("UI")]
+    [SerializeField] GameUI ui;
 
-    [Header("Settings")]
+    [field: Header("Settings")]
     [SerializeField] private float comboClearLimit = 5f;
-    private float comboClearTimer = 0f;
 
-    [field: Header("DO NOT EDIT AT INSPECTOR")]
+    [SerializeField] private int scoreUnit = 200;
+    [SerializeField] private int scoreBonusInterval = 10;
+    [SerializeField] private float scoreBonusRate = 0.5f;
+
+    [field: SerializeField] public float TimeLimit { get; private set; } = 60f;
+
+    [field: Header("Status")]
     [SerializeField] private int combo;
     [SerializeField] private int score;
+
+    [SerializeField] private float comboClearTimer = 0f;
+
+    [field: SerializeField] public float RemainTime { get; private set; }
 
     [field: SerializeField] public bool IsGameOver { get; private set; }
 
     #region UNITY METHOD
+    private void Awake()
+    {
+        RemainTime = TimeLimit;
+    }
+
     private void Update()
     {
         if (IsGameOver) return;
 
+        UpdateTimer();
         UpdateComboClearTime();
+    }
+
+    private void UpdateTimer()
+    {
+        RemainTime -= Time.deltaTime;
+        ui.UpdateTimer(RemainTime);
+
+        if (RemainTime <= 0) GameOver();
     }
 
     private void UpdateComboClearTime()
@@ -32,6 +54,8 @@ public class GameManager : MonoSingleton<GameManager>
         {
             combo = 0;
             comboClearTimer = 0f;
+
+            ui.UpdateCombo(combo);
         }
     }
     #endregion
@@ -41,6 +65,8 @@ public class GameManager : MonoSingleton<GameManager>
     {
         combo++;
         comboClearTimer = 0f;
+
+        ui.UpdateCombo(combo);
     }
     #endregion
 
@@ -48,6 +74,7 @@ public class GameManager : MonoSingleton<GameManager>
     public void GameOver()
     {
         IsGameOver = true;
+        ui.DisplayGameOver();
     }
 
     public void IncreaseScore(int matchCount = 1)
@@ -55,10 +82,13 @@ public class GameManager : MonoSingleton<GameManager>
         for (int i = 0; i < matchCount; i++)
         {
             AdvanceCombo();
+            RemainTime += 1f; //점수가 오를 때 마다 남은 시간 증가
 
-            int bonusStep = combo / SCORE_BONUS_INTERVAL;
-            float scoreMultiplier = 1f + bonusStep * SCORE_BONUS_RATE;
-            score += Mathf.FloorToInt(SCORE_UNIT * scoreMultiplier);
+            int bonusStep = combo / scoreBonusInterval;
+            float scoreMultiplier = 1f + bonusStep * scoreBonusRate;
+            score += Mathf.FloorToInt(scoreUnit * scoreMultiplier);
+            
+            ui.UpdateScore(score);
         }
     }
     #endregion
