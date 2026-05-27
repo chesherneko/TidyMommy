@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/StartMenu.unity
+    guid: c8eb1a60096759849b859e9318d7cdb1
+  - enabled: 1
     path: Assets/Scenes/Tidy_Mommy.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   m_configObjects:
