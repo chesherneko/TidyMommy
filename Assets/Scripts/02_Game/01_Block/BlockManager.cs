@@ -9,12 +9,11 @@ public interface IBlockPool
     void EnqueueBlock(Block block);
 }
 
-public class BlockManager : MonoBehaviour, IBlockPool
+public class BlockManager : MonoSingleton<BlockManager>, IBlockPool
 {
     private const int BOMB_BLOCK_REMOVE_COUNT = 3;
 
     [Header("Components")]
-    [SerializeField] private TidyMommy tidyMommy;
     [SerializeField] private BlockBucket[] buckets;
     [SerializeField] private CameraShake cameraShake;
 
@@ -28,6 +27,9 @@ public class BlockManager : MonoBehaviour, IBlockPool
     private Block selectedBlock;
 
     private readonly BlockType[] blockTypes = (BlockType[])Enum.GetValues(typeof(BlockType));
+
+    //Property
+    public TidyMommy TidyMommy => TidyMommy.Instance;
 
     #region UNITY METHOD
     private void Awake()
@@ -70,8 +72,8 @@ public class BlockManager : MonoBehaviour, IBlockPool
     {
         Dictionary<BlockType, int> counts = DictionaryPool<BlockType, int>.Get();
 
-        Level level = tidyMommy.CurrentLevel;
-        Mode mode = tidyMommy.CurrentMode;
+        Level level = TidyMommy.CurrentLevel;
+        Mode mode = TidyMommy.CurrentMode;
         int maxSpawnTypeIdx = (int)GetMaxBlockType(level, mode);
 
         for (int i = 0; i <= maxSpawnTypeIdx; i++)
@@ -102,7 +104,7 @@ public class BlockManager : MonoBehaviour, IBlockPool
         totalWeight = 0f;
         Dictionary<BlockType, float> weights = DictionaryPool<BlockType, float>.Get();
 
-        Level level = tidyMommy.CurrentLevel;
+        Level level = TidyMommy.CurrentLevel;
         float exponent = GetLevelExponent(level);
 
         foreach (var count in counts)
@@ -141,8 +143,8 @@ public class BlockManager : MonoBehaviour, IBlockPool
     {
         List<BlockType> types = ListPool<BlockType>.Get();
 
-        Level level = tidyMommy.CurrentLevel;
-        Mode mode = tidyMommy.CurrentMode;
+        Level level = TidyMommy.CurrentLevel;
+        Mode mode = TidyMommy.CurrentMode;
         int maxTypeIdx = (int)GetMaxBlockType(level, mode);
 
         for (int i = 0; i <= maxTypeIdx; i++)
@@ -210,7 +212,7 @@ public class BlockManager : MonoBehaviour, IBlockPool
     {
         TrySpawnBlocksWhenMatched();
 
-        tidyMommy.OnBlockMatched();
+        TidyMommy.OnBlockMatched();
         GameManager.Instance.IncreaseScore();
 
         cameraShake.Shake();

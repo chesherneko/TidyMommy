@@ -13,13 +13,9 @@ public enum Mode
     SuperFever
 }
 
-public class TidyMommy : MonoBehaviour
+public class TidyMommy : MonoSingleton<TidyMommy>
 {
     private const int INITIAL_BLOCK_SPAWN_COUNT = 3;
-
-    [Header("Components")]
-    [SerializeField] private BlockManager blockManager;
-    [SerializeField] private GameVisual visual;
 
     [Header("Settings")]
     [SerializeField] private float spawnInterval = 5f;
@@ -47,11 +43,15 @@ public class TidyMommy : MonoBehaviour
     [field: SerializeField] public Level CurrentLevel { get; private set; } = Level.One;
     [field: SerializeField] public Mode CurrentMode { get; private set; } = Mode.Normal;
 
+    //Property
+    public BlockManager BlockManager => BlockManager.Instance;
+    public GameVisual Visual => GameVisual.Instance;
+
     #region UNITY METHOD
     private void Start()
     {
         //게임 시작 시, 모든 라인에 정해둔 수량의 블록 스폰
-        blockManager.SpawnRandomBlocksToAllLines(INITIAL_BLOCK_SPAWN_COUNT);
+        BlockManager.SpawnRandomBlocksToAllLines(INITIAL_BLOCK_SPAWN_COUNT);
     }
 
     private void Update()
@@ -74,7 +74,7 @@ public class TidyMommy : MonoBehaviour
         if (spawnTimer >= spawnInterval)
         {
             spawnTimer = 0f;
-            blockManager.SpawnRandomBlocksToAllLines();
+            BlockManager.SpawnRandomBlocksToAllLines();
         }
     }
 
@@ -124,7 +124,7 @@ public class TidyMommy : MonoBehaviour
 
         if (bombSpawnGauge >= bombSpawnUnit)
         {
-            if (blockManager.TrySpawnBombBlock()) 
+            if (BlockManager.TrySpawnBombBlock()) 
                 bombSpawnGauge = 0f;
         }
     }
@@ -155,18 +155,18 @@ public class TidyMommy : MonoBehaviour
         if (CurrentMode == Mode.SuperFever)
             SuperFever();
 
-        visual.UpdateFever(CurrentMode);
+        Visual.UpdateFever(CurrentMode);
         SoundManager.Instance.SetBGMPitch(CurrentMode);
     }
 
     private void SuperFever()
     {
         int removeCount = BlockBucket.MAX_BLOCKS_PER_BUCKET;
-        blockManager.RemoveBlocksFromAllLines(removeCount);
+        BlockManager.RemoveBlocksFromAllLines(removeCount);
 
-        blockManager.SpawnBlocksToAllLines(BlockType.Red, 2);
-        blockManager.SpawnBlocksToAllLines(BlockType.Blue, 2);
-        blockManager.SpawnBlocksToAllLines(BlockType.Red, 2);
+        BlockManager.SpawnBlocksToAllLines(BlockType.Red, 2);
+        BlockManager.SpawnBlocksToAllLines(BlockType.Blue, 2);
+        BlockManager.SpawnBlocksToAllLines(BlockType.Red, 2);
     }
 
     private void UpdateGauge(ref float gauge, float speed)

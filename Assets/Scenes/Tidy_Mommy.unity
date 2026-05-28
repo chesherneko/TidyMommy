@@ -165,8 +165,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6b28dc946dde3240ad7682df026b3d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SoundManager
-  bgmSource: {fileID: 723678542}
-  seSource: {fileID: 1380725391}
   moveVolumeScale: 1
   moveVolumeScaleDuringMatch: 0.25
   matchVolumeScale: 1
@@ -208,7 +206,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1cf9ad0186b8c374a8f91c1c79bb84ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  visual: {fileID: 344725457}
   comboClearLimit: 5
   scoreUnit: 200
   scoreBonusInterval: 10
@@ -3866,7 +3863,7 @@ MonoBehaviour:
   bombSpawnUnit: 5
   bombGaugeDecaySpeed: 0.15
   feverUnit: 5
-  feverDuration: 10
+  feverDuration: 15
   feverGaugeDecaySpeed: 0.15
   spawnTimer: 0
   spawnSpeed: 1

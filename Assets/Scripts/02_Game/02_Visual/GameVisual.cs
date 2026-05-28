@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using System.Collections;
 
-public class GameVisual : MonoBehaviour
+public class GameVisual : MonoSingleton<GameVisual>
 {
     [Header("Components")]
     [SerializeField] private TextMeshProUGUI comboTMP;
